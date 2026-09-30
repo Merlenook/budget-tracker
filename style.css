@@ -298,3 +298,60 @@ button:hover {
     min-height: 48px;
   }
 }
+/* ---------- Reiter ---------- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.tab {
+  flex: 1;
+  white-space: nowrap;
+  background: var(--karte);
+  color: var(--gedimmt);
+  border: 1px solid #262a37;
+}
+
+.tab.aktiv {
+  background: var(--akzent);
+  color: #0b0d12;
+  border-color: var(--akzent);
+}
+
+.tab-inhalt[hidden] {
+  display: none;
+}
+
+/* ---------- Formulare ---------- */
+.feld-label {
+  margin: 4px 0 -4px;
+  color: var(--gedimmt);
+  font-size: 0.85rem;
+}
+
+.warnung {
+  color: #fbbf24;
+}
+
+/* ---------- Verlauf ---------- */
+.verlauf svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.verlauf-legende {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 8px;
+  color: var(--gedimmt);
+  font-size: 0.85rem;
+}
+
+.verlauf-legende .punkt {
+  display: inline-block;
+  margin-right: 6px;
+}
