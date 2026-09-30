@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>Mein Budget</h1>
+
+    <section class="karte">
+      <p class="label">Kontostand</p>
+      <p id="saldo" class="saldo">0,00 €</p>
+    </section>
+
+    <section class="karte">
+      <h2>Neue Buchung</h2>
+      <div class="formular">
+        <select id="typ">
+          <option value="ausgabe">Ausgabe</option>
+          <option value="einnahme">Einnahme</option>
+        </select>
+        <select id="kategorie"></select>
+        <input id="beschreibung" type="text" placeholder="Wofür?">
+        <input id="betrag" type="number" step="0.01" placeholder="Betrag in €">
+        <input id="datum" type="date">
+        <button id="hinzufuegen">Hinzufügen</button>
+      </div>
+    </section>
+
+    <section class="karte">
+      <div class="monat-nav">
+        <button id="zurueck" class="nav-knopf">‹</button>
+        <h2 id="monatName"></h2>
+        <button id="vor" class="nav-knopf">›</button>
+      </div>
+
+      <div class="summen">
+        <div>
+          <p class="label">Einnahmen</p>
+          <p id="summeEin" class="einnahme summe"></p>
+        </div>
+        <div>
+          <p class="label">Ausgaben</p>
+          <p id="summeAus" class="ausgabe summe"></p>
+        </div>
+      </div>
+
+      <div id="donut" class="donut"></div>
+      <ul id="legende" class="legende"></ul>
+    </section>
+
+    <section class="karte">
+      <h2>Budgetgrenzen</h2>
+      <p class="label">Trag rechts ein Monatslimit ein und bestätige mit Enter.</p>
+      <ul id="budgetListe"></ul>
+    </section>
+      <h2>Buchungen</h2>
+      <ul id="liste"></ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
