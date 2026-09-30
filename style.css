@@ -355,3 +355,10 @@ button:hover {
   display: inline-block;
   margin-right: 6px;
 }
+.gefahr {
+  width: 100%;
+  margin-top: 12px;
+  background: transparent;
+  color: var(--rot);
+  border: 1px solid var(--rot);
+}

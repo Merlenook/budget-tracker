@@ -692,6 +692,28 @@ importDatei.addEventListener("change", function () {
   leser.readAsText(datei);
 });
 
+// ---------- Neustart ----------
+const resetKnopf = document.getElementById("resetKnopf");
+
+resetKnopf.addEventListener("click", function () {
+  const ok1 = confirm(
+    "Wirklich ALLES löschen? Buchungen, Regelbuchungen, Versicherungen und Budgetgrenzen gehen verloren."
+  );
+  if (!ok1) return;
+
+  const ok2 = confirm("Letzte Nachfrage: Das kann nicht rückgängig gemacht werden. Fortfahren?");
+  if (!ok2) return;
+
+  buchungen = [];
+  budgets = {};
+  regeln = [];
+  monat = heute().slice(0, 7);
+
+  localStorage.setItem("budgets", JSON.stringify(budgets));
+  speichern();
+  anzeigen();
+  backupMeldung.textContent = "Alles zurückgesetzt.";
+});
 // ---------- Start ----------
 datumFeld.value = heute();
 wStart.value = heute();
