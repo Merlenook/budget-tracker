@@ -34,6 +34,17 @@
     </section>
 
     <section class="karte">
+      <h2>Backup</h2>
+      <p class="label">Sichere deine Daten regelmäßig als Datei.</p>
+      <div class="backup-knoepfe">
+        <button id="exportKnopf">Exportieren</button>
+        <button id="importKnopf" class="zweit">Importieren</button>
+      </div>
+      <input id="importDatei" type="file" accept="application/json,.json" hidden>
+      <p id="backupMeldung" class="label"></p>
+    </section>
+    
+    <section class="karte">
       <div class="monat-nav">
         <button id="zurueck" class="nav-knopf">‹</button>
         <h2 id="monatName"></h2>

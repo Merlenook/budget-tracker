@@ -326,6 +326,62 @@ datumFeld.value = heute();
 kategorienLaden();
 speichern(); // speichert auch die Datums-Ergänzung für alte Buchungen
 anzeigen();
+// ---------- Backup ----------
+const exportKnopf = document.getElementById("exportKnopf");
+const importKnopf = document.getElementById("importKnopf");
+const importDatei = document.getElementById("importDatei");
+const backupMeldung = document.getElementById("backupMeldung");
+
+// Alle Daten als Datei herunterladen
+exportKnopf.addEventListener("click", function () {
+  const daten = { buchungen: buchungen, budgets: budgets };
+  const blob = new Blob([JSON.stringify(daten, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "budget-backup-" + heute() + ".json";
+  link.click();
+  URL.revokeObjectURL(link.href);
+  backupMeldung.textContent = "Backup gespeichert (" + buchungen.length + " Buchungen).";
+});
+
+// Der Import-Knopf öffnet die Dateiauswahl
+importKnopf.addEventListener("click", function () {
+  importDatei.click();
+});
+
+// Gewählte Datei einlesen
+importDatei.addEventListener("change", function () {
+  const datei = importDatei.files[0];
+  if (!datei) return;
+
+  const leser = new FileReader();
+  leser.onload = function () {
+    try {
+      const daten = JSON.parse(leser.result);
+      if (!Array.isArray(daten.buchungen)) throw new Error("Falsches Format");
+
+      const ok = confirm(
+        "Achtung: Die aktuellen Daten werden durch das Backup ersetzt (" +
+        daten.buchungen.length + " Buchungen). Fortfahren?"
+      );
+      if (!ok) return;
+
+      buchungen = daten.buchungen;
+      budgets = daten.budgets || {};
+      buchungen.forEach(function (b) {
+        if (!b.datum) b.datum = heute();
+      });
+      localStorage.setItem("budgets", JSON.stringify(budgets));
+      speichern();
+      anzeigen();
+      backupMeldung.textContent = "Backup geladen (" + buchungen.length + " Buchungen).";
+    } catch (fehler) {
+      backupMeldung.textContent = "Diese Datei konnte nicht gelesen werden.";
+    }
+    importDatei.value = ""; // damit dieselbe Datei erneut gewählt werden kann
+  };
+  leser.readAsText(datei);
+});
 // Service Worker registrieren (für Offline-Modus und Installierbarkeit)
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js");

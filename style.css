@@ -222,3 +222,15 @@ li:last-child {
 .fuellung.rot {
   background: var(--rot);
 }
+.backup-knoepfe {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.zweit {
+  background: var(--hintergrund);
+  color: var(--text);
+  border: 1px solid #2c3040;
+}
