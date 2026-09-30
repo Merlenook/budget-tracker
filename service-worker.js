@@ -1,4 +1,4 @@
-const CACHE = "budget-v4";
+const CACHE = "budget-v5";
 const DATEIEN = [
   "./",
   "./index.html",
@@ -26,11 +26,17 @@ self.addEventListener("activate", function (e) {
   );
 });
 
-// Beim Laden: erst im Speicher schauen, sonst aus dem Netz holen
+// Beim Laden: erst aus dem Netz holen (immer aktuell), offline aus dem Speicher
 self.addEventListener("fetch", function (e) {
   e.respondWith(
-    caches.match(e.request).then(function (treffer) {
-      return treffer || fetch(e.request);
-    })
+    fetch(e.request)
+      .then(function (antwort) {
+        const kopie = antwort.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, kopie); });
+        return antwort;
+      })
+      .catch(function () {
+        return caches.match(e.request);
+      })
   );
 });
