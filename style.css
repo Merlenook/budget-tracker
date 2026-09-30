@@ -417,3 +417,41 @@ li {
 .nav-knopf {
   background: var(--hintergrund);
 }
+/* ---------- Kategorien verwalten & Sparziele ---------- */
+#katTypWahl {
+  width: 100%;
+  margin: 12px 0 4px;
+}
+
+.kat-neu {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.fuellung.akzent {
+  background: var(--akzent);
+}
+
+.ziel-aktion {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.ziel-aktion input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.ziel-aktion button {
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.tab {
+  padding: 12px 14px;
+}

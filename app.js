@@ -1,5 +1,5 @@
 // ---------- Grunddaten ----------
-const KATEGORIEN = {
+const STANDARD_KATEGORIEN = {
   ausgabe: [
     "🛒 Lebensmittel",
     "🏠 Miete & Wohnen",
@@ -27,7 +27,6 @@ const INTERVALLE = {
 };
 
 // ---------- Hilfsfunktionen ----------
-// Heutiges Datum als Text, z. B. "2026-09-30"
 function heute() {
   const d = new Date();
   return (
@@ -37,12 +36,10 @@ function heute() {
   );
 }
 
-// "2026-09-30" wird zu "30.09.2026"
 function datumDE(datum) {
   return datum.slice(8, 10) + "." + datum.slice(5, 7) + "." + datum.slice(0, 4);
 }
 
-// Zu einem Datum n Monate addieren (der Tag bleibt, notfalls der letzte des Monats)
 function addMonate(startDatum, n) {
   const teile = startDatum.split("-").map(Number);
   const ziel = new Date(teile[0], teile[1] - 1 + n, 1);
@@ -55,7 +52,6 @@ function addMonate(startDatum, n) {
   );
 }
 
-// Wie viele Tage sind es von heute bis zu einem Datum?
 function tageBis(datum) {
   const a = new Date(heute() + "T00:00:00");
   const b = new Date(datum + "T00:00:00");
@@ -66,11 +62,42 @@ function euro(zahl) {
   return zahl.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 }
 
+// Kopie eines Objekts (damit die Standardliste unverändert bleibt)
+function kopie(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 // ---------- Gespeicherte Daten ----------
 let buchungen = JSON.parse(localStorage.getItem("buchungen")) || [];
 let budgets = JSON.parse(localStorage.getItem("budgets")) || {};
 let regeln = JSON.parse(localStorage.getItem("regeln")) || [];
+let sparziele = JSON.parse(localStorage.getItem("sparziele")) || [];
+let KATEGORIEN = JSON.parse(localStorage.getItem("kategorien")) || kopie(STANDARD_KATEGORIEN);
 let monat = heute().slice(0, 7);
+
+// Feste Kategorien, die andere Funktionen brauchen
+function istFest(typ, name) {
+  return name === "📦 Sonstiges" || (typ === "ausgabe" && name === "🛡️ Versicherungen");
+}
+
+// Sorgt dafür, dass die Kategorienlisten vollständig und die festen Einträge da sind
+function kategorienPruefen() {
+  if (!KATEGORIEN || !Array.isArray(KATEGORIEN.ausgabe)) {
+    KATEGORIEN = KATEGORIEN || {};
+    KATEGORIEN.ausgabe = kopie(STANDARD_KATEGORIEN.ausgabe);
+  }
+  if (!Array.isArray(KATEGORIEN.einnahme)) {
+    KATEGORIEN.einnahme = kopie(STANDARD_KATEGORIEN.einnahme);
+  }
+  ["📦 Sonstiges", "🛡️ Versicherungen"].forEach(function (k) {
+    if (!KATEGORIEN.ausgabe.includes(k)) KATEGORIEN.ausgabe.push(k);
+  });
+  if (!KATEGORIEN.einnahme.includes("📦 Sonstiges")) {
+    KATEGORIEN.einnahme.push("📦 Sonstiges");
+  }
+}
+
+kategorienPruefen();
 
 buchungen.forEach(function (b) {
   if (!b.datum) b.datum = heute();
@@ -78,7 +105,10 @@ buchungen.forEach(function (b) {
 
 function speichern() {
   localStorage.setItem("buchungen", JSON.stringify(buchungen));
+  localStorage.setItem("budgets", JSON.stringify(budgets));
   localStorage.setItem("regeln", JSON.stringify(regeln));
+  localStorage.setItem("sparziele", JSON.stringify(sparziele));
+  localStorage.setItem("kategorien", JSON.stringify(KATEGORIEN));
 }
 
 function sortieren() {
@@ -105,6 +135,11 @@ const budgetListe = document.getElementById("budgetListe");
 const verlauf = document.getElementById("verlauf");
 const verlaufInfo = document.getElementById("verlaufInfo");
 
+const katTypWahl = document.getElementById("katTypWahl");
+const katListe = document.getElementById("katListe");
+const katNeu = document.getElementById("katNeu");
+const katKnopf = document.getElementById("katKnopf");
+
 const wTyp = document.getElementById("wTyp");
 const wKategorie = document.getElementById("wKategorie");
 const wBeschreibung = document.getElementById("wBeschreibung");
@@ -124,6 +159,15 @@ const vListe = document.getElementById("vListe");
 const vSummeMonat = document.getElementById("vSummeMonat");
 const vSummeJahr = document.getElementById("vSummeJahr");
 
+const zName = document.getElementById("zName");
+const zBetrag = document.getElementById("zBetrag");
+const zStart = document.getElementById("zStart");
+const zDatum = document.getElementById("zDatum");
+const zKnopf = document.getElementById("zKnopf");
+const zListe = document.getElementById("zListe");
+const zSummeGespart = document.getElementById("zSummeGespart");
+const zSummeZiel = document.getElementById("zSummeZiel");
+
 // ---------- Reiter ----------
 document.querySelectorAll(".tab").forEach(function (tab) {
   tab.addEventListener("click", function () {
@@ -137,8 +181,9 @@ document.querySelectorAll(".tab").forEach(function (tab) {
   });
 });
 
-// ---------- Kategorien ----------
+// ---------- Kategorien in den Auswahlfeldern ----------
 function kategorienLaden(typEl, katEl) {
+  const alt = katEl.value; // aktuelle Auswahl merken
   katEl.innerHTML = "";
   KATEGORIEN[typEl.value].forEach(function (name) {
     const option = document.createElement("option");
@@ -146,6 +191,12 @@ function kategorienLaden(typEl, katEl) {
     option.textContent = name;
     katEl.appendChild(option);
   });
+  if (KATEGORIEN[typEl.value].includes(alt)) katEl.value = alt;
+}
+
+function kategorienAktualisieren() {
+  kategorienLaden(typFeld, kategorieFeld);
+  kategorienLaden(wTyp, wKategorie);
 }
 
 typFeld.addEventListener("change", function () {
@@ -154,6 +205,124 @@ typFeld.addEventListener("change", function () {
 wTyp.addEventListener("change", function () {
   kategorienLaden(wTyp, wKategorie);
 });
+
+// ---------- Kategorien verwalten ----------
+function kategorienZeichnen() {
+  katListe.innerHTML = "";
+  const typ = katTypWahl.value;
+
+  KATEGORIEN[typ].forEach(function (name) {
+    const eintrag = document.createElement("li");
+
+    const label = document.createElement("span");
+    label.textContent = name;
+
+    const rechts = document.createElement("span");
+    rechts.className = "rechts";
+
+    if (istFest(typ, name)) {
+      const fest = document.createElement("small");
+      fest.className = "kategorie-label";
+      fest.textContent = "fest";
+      rechts.appendChild(fest);
+    } else {
+      const bearbeiten = document.createElement("button");
+      bearbeiten.textContent = "✎";
+      bearbeiten.className = "loeschen";
+      bearbeiten.addEventListener("click", function () {
+        kategorieUmbenennen(typ, name);
+      });
+
+      const loeschen = document.createElement("button");
+      loeschen.textContent = "✕";
+      loeschen.className = "loeschen";
+      loeschen.addEventListener("click", function () {
+        kategorieLoeschen(typ, name);
+      });
+
+      rechts.append(bearbeiten, loeschen);
+    }
+
+    eintrag.append(label, rechts);
+    katListe.appendChild(eintrag);
+  });
+}
+
+function kategorieUmbenennen(typ, alt) {
+  const eingabe = prompt("Neuer Name für die Kategorie:", alt);
+  if (eingabe === null) return;
+  const neu = eingabe.trim();
+  if (neu === "" || neu === alt) return;
+  if (KATEGORIEN[typ].includes(neu)) {
+    alert("Diese Kategorie gibt es schon.");
+    return;
+  }
+
+  KATEGORIEN[typ][KATEGORIEN[typ].indexOf(alt)] = neu;
+
+  buchungen.forEach(function (b) {
+    if (b.typ === typ && b.kategorie === alt) b.kategorie = neu;
+  });
+  regeln.forEach(function (r) {
+    if (r.typ === typ && r.kategorie === alt) r.kategorie = neu;
+  });
+  if (typ === "ausgabe" && budgets[alt] !== undefined) {
+    budgets[neu] = budgets[alt];
+    delete budgets[alt];
+  }
+
+  speichern();
+  kategorienAktualisieren();
+  anzeigen();
+}
+
+function kategorieLoeschen(typ, name) {
+  const ok = confirm(
+    "„" + name + "“ löschen? Zugehörige Buchungen werden „📦 Sonstiges“ zugeordnet."
+  );
+  if (!ok) return;
+
+  KATEGORIEN[typ] = KATEGORIEN[typ].filter(function (k) {
+    return k !== name;
+  });
+
+  buchungen.forEach(function (b) {
+    if (b.typ === typ && b.kategorie === name) b.kategorie = "📦 Sonstiges";
+  });
+  regeln.forEach(function (r) {
+    if (r.typ === typ && r.kategorie === name) r.kategorie = "📦 Sonstiges";
+  });
+  if (typ === "ausgabe") delete budgets[name];
+
+  speichern();
+  kategorienAktualisieren();
+  anzeigen();
+}
+
+katKnopf.addEventListener("click", function () {
+  const typ = katTypWahl.value;
+  const name = katNeu.value.trim();
+  if (name === "") return;
+  if (KATEGORIEN[typ].includes(name)) {
+    alert("Diese Kategorie gibt es schon.");
+    return;
+  }
+
+  // vor "Sonstiges" einfügen, damit das immer am Ende bleibt
+  const pos = KATEGORIEN[typ].indexOf("📦 Sonstiges");
+  KATEGORIEN[typ].splice(pos, 0, name);
+
+  katNeu.value = "";
+  speichern();
+  kategorienAktualisieren();
+  anzeigen();
+});
+
+katNeu.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") katKnopf.click();
+});
+
+katTypWahl.addEventListener("change", kategorienZeichnen);
 
 // ---------- Monat wechseln ----------
 function monatWechseln(richtung) {
@@ -179,7 +348,7 @@ function regelnAnwenden() {
 
     for (let k = 0; k < 600; k++) {
       const datum = addMonate(r.start, k * r.monate);
-      if (datum > heute()) break; // Zukunft: noch nicht eintragen
+      if (datum > heute()) break;
 
       if (!r.erzeugt.includes(datum)) {
         buchungen.push({
@@ -201,7 +370,6 @@ function regelnAnwenden() {
   }
 }
 
-// Wann wird die Regel das nächste Mal fällig?
 function naechsteFaelligkeit(r) {
   for (let k = 0; k < 600; k++) {
     const datum = addMonate(r.start, k * r.monate);
@@ -255,7 +423,7 @@ function donutZeichnen(ausgaben) {
   });
 
   const mitte = gesamt > 0 ? euro(gesamt) : "Keine Ausgaben";
-  svg += '<text x="21" y="21.8" text-anchor="middle" fill="#3d3560"" font-size="3.4" font-weight="700">' + mitte + "</text>";
+  svg += '<text x="21" y="21.8" text-anchor="middle" fill="#3d3560" font-size="3.4" font-weight="700">' + mitte + "</text>";
   svg += "</svg>";
   donut.innerHTML = svg;
 }
@@ -265,7 +433,6 @@ function verlaufZeichnen() {
   const teile = monat.split("-");
   const monate = [];
 
-  // Die 6 Monate bis einschließlich des gewählten Monats
   for (let i = 5; i >= 0; i--) {
     const d = new Date(Number(teile[0]), Number(teile[1]) - 1 - i, 1);
     monate.push({
@@ -285,7 +452,6 @@ function verlaufZeichnen() {
     else m.aus += b.betrag;
   });
 
-  // Höchster Wert bestimmt die Skalierung
   let max = 1;
   let summeAus = 0;
   monate.forEach(function (m) {
@@ -344,7 +510,7 @@ function budgetsZeichnen(ausgaben) {
       } else {
         budgets[kat] = wert;
       }
-      localStorage.setItem("budgets", JSON.stringify(budgets));
+      speichern();
       anzeigen();
     });
 
@@ -383,7 +549,6 @@ function budgetsZeichnen(ausgaben) {
 }
 
 // ---------- Listen für Regeln und Versicherungen ----------
-// Eine Zeile mit Name, Zusatzinfos und Löschen-Knopf
 function regelZeile(r, infos) {
   const eintrag = document.createElement("li");
 
@@ -476,6 +641,152 @@ function regelnZeichnen() {
   vSummeJahr.textContent = euro(proMonat * 12);
 }
 
+// ---------- Sparziele ----------
+function sparzielAendern(z, feld, richtung) {
+  const wert = parseFloat(feld.value);
+  if (isNaN(wert) || wert <= 0) return;
+  z.gespart = Math.max(0, Math.round((z.gespart + richtung * wert) * 100) / 100);
+  speichern();
+  anzeigen();
+}
+
+function sparzielBearbeiten(z) {
+  const name = prompt("Name des Sparziels:", z.name);
+  if (name === null) return;
+  const zielText = prompt("Zielbetrag in €:", String(z.ziel));
+  if (zielText === null) return;
+
+  const ziel = parseFloat(zielText.replace(",", "."));
+  if (name.trim() !== "") z.name = name.trim();
+  if (!isNaN(ziel) && ziel > 0) z.ziel = ziel;
+
+  speichern();
+  anzeigen();
+}
+
+function sparzieleZeichnen() {
+  zListe.innerHTML = "";
+  let gesamtGespart = 0;
+  let gesamtZiel = 0;
+
+  if (sparziele.length === 0) {
+    zListe.appendChild(leerZeile("Noch keine Sparziele."));
+  }
+
+  sparziele.forEach(function (z) {
+    gesamtGespart += z.gespart;
+    gesamtZiel += z.ziel;
+
+    const zeile = document.createElement("li");
+    zeile.className = "budget-zeile";
+
+    // Kopf: Name und Knöpfe
+    const kopf = document.createElement("div");
+    kopf.className = "budget-kopf";
+
+    const name = document.createElement("span");
+    name.textContent = z.name;
+
+    const knoepfe = document.createElement("span");
+    knoepfe.className = "rechts";
+
+    const bearbeiten = document.createElement("button");
+    bearbeiten.textContent = "✎";
+    bearbeiten.className = "loeschen";
+    bearbeiten.addEventListener("click", function () {
+      sparzielBearbeiten(z);
+    });
+
+    const loeschen = document.createElement("button");
+    loeschen.textContent = "✕";
+    loeschen.className = "loeschen";
+    loeschen.addEventListener("click", function () {
+      const ok = confirm("Sparziel „" + z.name + "“ löschen?");
+      if (!ok) return;
+      sparziele.splice(sparziele.indexOf(z), 1);
+      speichern();
+      anzeigen();
+    });
+
+    knoepfe.append(bearbeiten, loeschen);
+    kopf.append(name, knoepfe);
+    zeile.appendChild(kopf);
+
+    // Fortschrittsbalken
+    const anteil = (z.gespart / z.ziel) * 100;
+    const erreicht = anteil >= 100;
+
+    const spur = document.createElement("div");
+    spur.className = "balken";
+    const fuellung = document.createElement("div");
+    fuellung.className = "fuellung" + (erreicht ? "" : " akzent");
+    fuellung.style.width = Math.min(anteil, 100) + "%";
+    spur.appendChild(fuellung);
+    zeile.appendChild(spur);
+
+    // Infotext
+    const info = document.createElement("small");
+    info.className = "kategorie-label";
+    info.textContent =
+      euro(z.gespart) + " von " + euro(z.ziel) + " · " + Math.floor(anteil) + " %";
+    zeile.appendChild(info);
+
+    const rest = z.ziel - z.gespart;
+    const extra = document.createElement("small");
+    extra.className = "kategorie-label";
+
+    if (erreicht) {
+      extra.textContent = "🎉 Ziel erreicht!";
+      zeile.appendChild(extra);
+    } else {
+      let text = "Noch " + euro(rest);
+      if (z.datum) {
+        const tage = tageBis(z.datum);
+        if (tage < 0) {
+          text += " · Zieldatum " + datumDE(z.datum) + " überschritten";
+          extra.classList.add("warnung");
+        } else {
+          const monateRest = Math.max(1, Math.ceil(tage / 30.44));
+          text += " · ca. " + euro(rest / monateRest) + " pro Monat bis " + datumDE(z.datum);
+        }
+      }
+      extra.textContent = text;
+      zeile.appendChild(extra);
+    }
+
+    // Einzahlen / Entnehmen
+    const aktion = document.createElement("div");
+    aktion.className = "ziel-aktion";
+
+    const feld = document.createElement("input");
+    feld.type = "number";
+    feld.min = "0";
+    feld.step = "0.01";
+    feld.placeholder = "Betrag €";
+
+    const plus = document.createElement("button");
+    plus.textContent = "+ Einzahlen";
+    plus.addEventListener("click", function () {
+      sparzielAendern(z, feld, 1);
+    });
+
+    const minus = document.createElement("button");
+    minus.textContent = "− Entnehmen";
+    minus.className = "zweit";
+    minus.addEventListener("click", function () {
+      sparzielAendern(z, feld, -1);
+    });
+
+    aktion.append(feld, plus, minus);
+    zeile.appendChild(aktion);
+
+    zListe.appendChild(zeile);
+  });
+
+  zSummeGespart.textContent = euro(gesamtGespart);
+  zSummeZiel.textContent = euro(gesamtZiel);
+}
+
 // ---------- Alles neu zeichnen ----------
 function anzeigen() {
   let saldo = 0;
@@ -507,9 +818,10 @@ function anzeigen() {
   donutZeichnen(ausgabenImMonat);
   budgetsZeichnen(ausgabenImMonat);
   verlaufZeichnen();
+  kategorienZeichnen();
   regelnZeichnen();
+  sparzieleZeichnen();
 
-  // Buchungsliste
   liste.innerHTML = "";
   if (imMonat.length === 0) {
     liste.appendChild(leerZeile("Keine Buchungen in diesem Monat."));
@@ -634,6 +946,32 @@ vKnopf.addEventListener("click", function () {
   anzeigen();
 });
 
+// ---------- Neues Sparziel ----------
+zKnopf.addEventListener("click", function () {
+  const name = zName.value.trim();
+  const ziel = parseFloat(zBetrag.value);
+  const start = parseFloat(zStart.value);
+
+  if (name === "" || isNaN(ziel) || ziel <= 0) {
+    return;
+  }
+
+  sparziele.push({
+    id: Date.now(),
+    name: name,
+    ziel: ziel,
+    gespart: isNaN(start) || start < 0 ? 0 : start,
+    datum: zDatum.value || "",
+  });
+
+  zName.value = "";
+  zBetrag.value = "";
+  zStart.value = "";
+  zDatum.value = "";
+  speichern();
+  anzeigen();
+});
+
 // ---------- Backup ----------
 const exportKnopf = document.getElementById("exportKnopf");
 const importKnopf = document.getElementById("importKnopf");
@@ -641,7 +979,13 @@ const importDatei = document.getElementById("importDatei");
 const backupMeldung = document.getElementById("backupMeldung");
 
 exportKnopf.addEventListener("click", function () {
-  const daten = { buchungen: buchungen, budgets: budgets, regeln: regeln };
+  const daten = {
+    buchungen: buchungen,
+    budgets: budgets,
+    regeln: regeln,
+    sparziele: sparziele,
+    kategorien: KATEGORIEN,
+  };
   const blob = new Blob([JSON.stringify(daten, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
@@ -674,14 +1018,22 @@ importDatei.addEventListener("change", function () {
       buchungen = daten.buchungen;
       budgets = daten.budgets || {};
       regeln = Array.isArray(daten.regeln) ? daten.regeln : [];
+      sparziele = Array.isArray(daten.sparziele) ? daten.sparziele : [];
+      KATEGORIEN =
+        daten.kategorien && typeof daten.kategorien === "object"
+          ? daten.kategorien
+          : kopie(STANDARD_KATEGORIEN);
+      kategorienPruefen();
+
       buchungen.forEach(function (b) {
         if (!b.datum) b.datum = heute();
       });
       regeln.forEach(function (r) {
         if (!r.erzeugt) r.erzeugt = [];
       });
-      localStorage.setItem("budgets", JSON.stringify(budgets));
+
       speichern();
+      kategorienAktualisieren();
       anzeigen();
       backupMeldung.textContent = "Backup geladen (" + buchungen.length + " Buchungen).";
     } catch (fehler) {
@@ -697,7 +1049,7 @@ const resetKnopf = document.getElementById("resetKnopf");
 
 resetKnopf.addEventListener("click", function () {
   const ok1 = confirm(
-    "Wirklich ALLES löschen? Buchungen, Regelbuchungen, Versicherungen und Budgetgrenzen gehen verloren."
+    "Wirklich ALLES löschen? Buchungen, Regelbuchungen, Versicherungen, Sparziele, Budgetgrenzen und eigene Kategorien gehen verloren."
   );
   if (!ok1) return;
 
@@ -707,19 +1059,21 @@ resetKnopf.addEventListener("click", function () {
   buchungen = [];
   budgets = {};
   regeln = [];
+  sparziele = [];
+  KATEGORIEN = kopie(STANDARD_KATEGORIEN);
   monat = heute().slice(0, 7);
 
-  localStorage.setItem("budgets", JSON.stringify(budgets));
   speichern();
+  kategorienAktualisieren();
   anzeigen();
   backupMeldung.textContent = "Alles zurückgesetzt.";
 });
+
 // ---------- Start ----------
 datumFeld.value = heute();
 wStart.value = heute();
 vStart.value = heute();
-kategorienLaden(typFeld, kategorieFeld);
-kategorienLaden(wTyp, wKategorie);
+kategorienAktualisieren();
 regelnAnwenden();
 speichern();
 anzeigen();

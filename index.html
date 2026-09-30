@@ -21,6 +21,7 @@
       <button class="tab aktiv" data-tab="uebersicht">Übersicht</button>
       <button class="tab" data-tab="wiederkehrend">Wiederkehrend</button>
       <button class="tab" data-tab="versicherungen">Versicherungen</button>
+      <button class="tab" data-tab="sparziele">Sparziele</button>
     </nav>
 
     <!-- ===== Reiter 1: Übersicht ===== -->
@@ -86,6 +87,20 @@
           </section>
 
           <section class="karte">
+            <h2>Kategorien verwalten</h2>
+            <p class="label">Eigene Kategorien anlegen, umbenennen (✎) oder löschen (✕). Sie erscheinen auch bei den Budgetgrenzen.</p>
+            <select id="katTypWahl">
+              <option value="ausgabe">Ausgaben-Kategorien</option>
+              <option value="einnahme">Einnahmen-Kategorien</option>
+            </select>
+            <ul id="katListe"></ul>
+            <div class="kat-neu">
+              <input id="katNeu" type="text" placeholder="Neue Kategorie, z. B. 🐶 Haustier">
+              <button id="katKnopf">Hinzufügen</button>
+            </div>
+          </section>
+
+          <section class="karte">
             <h2>Buchungen</h2>
             <ul id="liste"></ul>
           </section>
@@ -100,9 +115,10 @@
             <input id="importDatei" type="file" accept="application/json,.json" hidden>
             <p id="backupMeldung" class="label"></p>
           </section>
-                    <section class="karte">
+
+          <section class="karte">
             <h2>Neustart</h2>
-            <p class="label">Löscht alle Buchungen, Regelbuchungen, Versicherungen und Budgetgrenzen. Exportiere vorher ein Backup, falls du etwas behalten willst.</p>
+            <p class="label">Löscht alle Buchungen, Regelbuchungen, Versicherungen, Sparziele und eigenen Kategorien. Exportiere vorher ein Backup, falls du etwas behalten willst.</p>
             <button id="resetKnopf" class="gefahr">Alles zurücksetzen</button>
           </section>
         </div>
@@ -185,6 +201,44 @@
           <section class="karte">
             <h2>Meine Versicherungen</h2>
             <ul id="vListe"></ul>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Reiter 4: Sparziele ===== -->
+    <div id="tab-sparziele" class="tab-inhalt" hidden>
+      <div class="spalten">
+        <div class="spalte">
+          <section class="karte">
+            <h2>Neues Sparziel</h2>
+            <div class="formular">
+              <input id="zName" type="text" placeholder="Name (z. B. 🏖️ Urlaub)">
+              <input id="zBetrag" type="number" step="0.01" placeholder="Zielbetrag in €">
+              <input id="zStart" type="number" step="0.01" placeholder="Schon gespart in € (optional)">
+              <label class="feld-label" for="zDatum">Zieldatum (optional)</label>
+              <input id="zDatum" type="date">
+              <button id="zKnopf">Sparziel anlegen</button>
+            </div>
+          </section>
+        </div>
+        <div class="spalte">
+          <section class="karte">
+            <h2>Übersicht</h2>
+            <div class="summen">
+              <div>
+                <p class="label">Insgesamt gespart</p>
+                <p id="zSummeGespart" class="summe"></p>
+              </div>
+              <div>
+                <p class="label">Gesamtziel</p>
+                <p id="zSummeZiel" class="summe"></p>
+              </div>
+            </div>
+          </section>
+          <section class="karte">
+            <h2>Meine Sparziele</h2>
+            <ul id="zListe"></ul>
           </section>
         </div>
       </div>
