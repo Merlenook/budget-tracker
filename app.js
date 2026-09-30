@@ -15,8 +15,8 @@ const KATEGORIEN = {
 };
 
 const FARBEN = [
-  "#7c9cff", "#4ade80", "#fbbf24", "#f87171",
-  "#c084fc", "#22d3ee", "#fb923c", "#94a3b8",
+  "#a8bef7", "#cfeaa5", "#f7e0a3", "#ef9da2",
+  "#c9a8f0", "#9fdde6", "#f7c59f", "#b8bfd6",
 ];
 
 const INTERVALLE = {
@@ -225,7 +225,7 @@ function donutZeichnen(ausgaben) {
   });
 
   let svg = '<svg viewBox="0 0 42 42">';
-  svg += '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="#2c3040" stroke-width="5"></circle>';
+  svg += '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e6d2f7" stroke-width="5"></circle>';
 
   legende.innerHTML = "";
   let verschiebung = 0;
@@ -255,7 +255,7 @@ function donutZeichnen(ausgaben) {
   });
 
   const mitte = gesamt > 0 ? euro(gesamt) : "Keine Ausgaben";
-  svg += '<text x="21" y="21.8" text-anchor="middle" fill="#e8eaf0" font-size="3.4" font-weight="700">' + mitte + "</text>";
+  svg += '<text x="21" y="21.8" text-anchor="middle" fill="#3d3560"" font-size="3.4" font-weight="700">' + mitte + "</text>";
   svg += "</svg>";
   donut.innerHTML = svg;
 }
@@ -298,9 +298,9 @@ function verlaufZeichnen() {
     const x = i * 50 + 9;
     const hEin = (m.ein / max) * 100;
     const hAus = (m.aus / max) * 100;
-    svg += '<rect x="' + x + '" y="' + (110 - hEin) + '" width="14" height="' + hEin + '" rx="3" fill="#4ade80"></rect>';
-    svg += '<rect x="' + (x + 16) + '" y="' + (110 - hAus) + '" width="14" height="' + hAus + '" rx="3" fill="#f87171"></rect>';
-    svg += '<text x="' + (x + 15) + '" y="130" text-anchor="middle" fill="#8a90a2" font-size="10">' + m.label + "</text>";
+    svg += '<rect x="' + x + '" y="' + (110 - hEin) + '" width="14" height="' + hEin + '" rx="3" fill="#cfeaa5"></rect>';
+    svg += '<rect x="' + (x + 16) + '" y="' + (110 - hAus) + '" width="14" height="' + hAus + '" rx="3" fill="#ef9da2"></rect>';
+    svg += '<text x="' + (x + 15) + '" y="130" text-anchor="middle" fill="#6f68a3" font-size="10">' + m.label + "</text>";
   });
   svg += "</svg>";
   verlauf.innerHTML = svg;

@@ -1,11 +1,15 @@
 :root {
   --hintergrund: #e6d2f7;
   --karte: #d7c7f9;
-  --text: #e8eaf0;
-  --gedimmt: #aab0ef;
+  --text: #3d3560;
+  --gedimmt: #6f68a3;
   --akzent: #a8bef7;
   --gruen: #cfeaa5;
   --rot: #ef9da2;
+  --gelb: #f7e0a3;
+  --rand: #c2b0ee;
+  --gruen-text: #5b8a2b;
+  --rot-text: #c0505a;
 }
 
 * {
@@ -361,4 +365,55 @@ button:hover {
   background: transparent;
   color: var(--rot);
   border: 1px solid var(--rot);
+}
+/* ---------- Pastell-Anpassungen ---------- */
+.karte {
+  border: 1px solid var(--rand);
+  box-shadow: 0 6px 20px rgba(120, 100, 180, 0.15);
+}
+
+.saldo-karte {
+  background: linear-gradient(135deg, #c9d6fb 0%, #d7c7f9 70%);
+  border: 1px solid var(--rand);
+}
+
+input,
+select,
+.loeschen,
+.zweit,
+.tab {
+  border: 1px solid var(--rand);
+}
+
+li {
+  border-bottom: 1px solid var(--rand);
+}
+
+.balken {
+  background: var(--hintergrund);
+}
+
+.fuellung.gelb {
+  background: var(--gelb);
+}
+
+.einnahme {
+  color: var(--gruen-text);
+}
+
+.ausgabe {
+  color: var(--rot-text);
+}
+
+.warnung {
+  color: #b8862b;
+}
+
+.gefahr {
+  color: var(--rot-text);
+  border: 1px solid var(--rot);
+}
+
+.nav-knopf {
+  background: var(--hintergrund);
 }
