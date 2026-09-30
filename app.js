@@ -72,6 +72,7 @@ let buchungen = JSON.parse(localStorage.getItem("buchungen")) || [];
 let budgets = JSON.parse(localStorage.getItem("budgets")) || {};
 let regeln = JSON.parse(localStorage.getItem("regeln")) || [];
 let sparziele = JSON.parse(localStorage.getItem("sparziele")) || [];
+let monatsziel = Number(localStorage.getItem("monatsziel")) || 0;
 let KATEGORIEN = JSON.parse(localStorage.getItem("kategorien")) || kopie(STANDARD_KATEGORIEN);
 let monat = heute().slice(0, 7);
 
@@ -109,6 +110,7 @@ function speichern() {
   localStorage.setItem("regeln", JSON.stringify(regeln));
   localStorage.setItem("sparziele", JSON.stringify(sparziele));
   localStorage.setItem("kategorien", JSON.stringify(KATEGORIEN));
+  localStorage.setItem("monatsziel", String(monatsziel));
 }
 
 function sortieren() {
@@ -786,7 +788,163 @@ function sparzieleZeichnen() {
   zSummeGespart.textContent = euro(gesamtGespart);
   zSummeZiel.textContent = euro(gesamtZiel);
 }
+// ---------- Monatsabschluss ----------
+const abTitel = document.getElementById("abTitel");
+const abUebrig = document.getElementById("abUebrig");
+const abLabel = document.getElementById("abLabel");
+const abSpur = document.getElementById("abSpur");
+const abFuellung = document.getElementById("abFuellung");
+const abZielInfo = document.getElementById("abZielInfo");
+const abText = document.getElementById("abText");
+const abDetails = document.getElementById("abDetails");
+const abZiel = document.getElementById("abZiel");
 
+// Texte für abgeschlossene Monate. {x} wird durch den Betrag ersetzt.
+// Hier kannst du gern eigene Sätze ergänzen.
+const TEXTE_ABGESCHLOSSEN = {
+  top: [
+    "Wow, du hast dein Ziel weit übertroffen! Mit {x} übrig darfst du dir heute etwas Schönes gönnen. 🌟",
+    "Starker Monat! {x} sind übrig geblieben, richtig gut gemacht. 🎉",
+  ],
+  ziel: [
+    "Ziel erreicht! {x} sind übrig geblieben. Genau so geht das. ✨",
+    "Geschafft, du hast dein Monatsziel erreicht. Sei stolz auf dich! 💜",
+  ],
+  teil: [
+    "Ein Plus von {x}. Dein Ziel hast du knapp verfehlt, aber du warst im grünen Bereich. Nächsten Monat klappt's! 🌱",
+    "Es ist etwas übrig geblieben ({x}). Jeder Euro zählt, du bist auf einem guten Weg. 🌸",
+  ],
+  plus: [
+    "Am Ende sind {x} übrig geblieben. Ein solider Monat! 🌿 Leg unten ein Ziel fest, dann siehst du, wie nah du dran bist.",
+    "Du hast {x} übrig behalten, das ist ein gutes Ergebnis. 🌷",
+  ],
+  null: [
+    "Punktlandung: Einnahmen und Ausgaben haben sich genau die Waage gehalten. 🎯",
+  ],
+  minus: [
+    "Diesmal war es ein Minus von {x}. Das passiert jedem mal. Schau dir die größte Ausgaben-Kategorie an, dort steckt oft das meiste Potenzial. 🌷",
+    "Ein Minus von {x} ist kein Beinbruch. Neuer Monat, neue Chance! 💪",
+  ],
+};
+
+// Texte für den laufenden Monat (Zwischenstand)
+const TEXTE_LAUFEND = {
+  top: ["Läuft super: Du liegst jetzt schon weit über deinem Ziel ({x} übrig). Bleib dran! 🌟"],
+  ziel: ["Dein Ziel hast du schon erreicht, {x} sind bisher übrig. Weiter so! ✨"],
+  teil: ["Bisher {x} übrig. Du bist auf dem Weg zu deinem Ziel, bleib dran. 🌱"],
+  plus: ["Bisher {x} übrig. Ein guter Zwischenstand! 🌿"],
+  null: ["Aktuell stehen Einnahmen und Ausgaben genau gleich. Achte auf die nächsten Ausgaben. 🎯"],
+  minus: ["Aktuell im Minus ({x}). Noch ist der Monat nicht vorbei, du kannst gegensteuern. 💪"],
+};
+
+// Eine Zeile mit Bezeichnung und Wert in der Kennzahlen-Liste
+function abDetail(name, wert, klasse) {
+  const zeile = document.createElement("li");
+  const links = document.createElement("span");
+  links.textContent = name;
+  const rechts = document.createElement("span");
+  rechts.textContent = wert;
+  if (klasse) rechts.className = klasse;
+  zeile.append(links, rechts);
+  abDetails.appendChild(zeile);
+}
+
+function abschlussZeichnen(imMonat, ein, aus) {
+  const aktuell = heute().slice(0, 7);
+  const laufend = monat === aktuell;
+  const zukunft = monat > aktuell;
+  const uebrig = Math.round((ein - aus) * 100) / 100;
+
+  abZiel.value = monatsziel || "";
+  abDetails.innerHTML = "";
+  abTitel.textContent = laufend ? "Zwischenstand" : "Monatsabschluss";
+
+  // Nichts zu zeigen
+  if (zukunft || imMonat.length === 0) {
+    abUebrig.textContent = "–";
+    abUebrig.className = "saldo abschluss-zahl";
+    abLabel.textContent = "übrig";
+    abSpur.hidden = true;
+    abZielInfo.textContent = "";
+    abText.textContent = zukunft
+      ? "Dieser Monat hat noch nicht begonnen."
+      : "In diesem Monat gibt es noch keine Buchungen.";
+    return;
+  }
+
+  abUebrig.textContent = euro(uebrig);
+  abUebrig.className = "saldo abschluss-zahl " + (uebrig < 0 ? "ausgabe" : "einnahme");
+  abLabel.textContent = (laufend ? "bisher übrig" : "übrig geblieben") + " (Einnahmen − Ausgaben)";
+
+  // Fortschritt zum Monatsziel
+  if (monatsziel > 0) {
+    abSpur.hidden = false;
+    const anteil = Math.max(0, (uebrig / monatsziel) * 100);
+    abFuellung.style.width = Math.min(anteil, 100) + "%";
+    abFuellung.className = "fuellung" + (anteil >= 100 ? "" : " akzent");
+    abZielInfo.textContent =
+      uebrig >= monatsziel
+        ? "Ziel von " + euro(monatsziel) + " erreicht ✓"
+        : "Ziel: " + euro(monatsziel) + " · noch " + euro(monatsziel - uebrig) + " bis dahin";
+  } else {
+    abSpur.hidden = true;
+    abZielInfo.textContent = "";
+  }
+
+  // Welche Stufe passt?
+  let status;
+  if (uebrig < 0) status = "minus";
+  else if (uebrig === 0) status = "null";
+  else if (monatsziel > 0 && uebrig >= monatsziel * 1.5) status = "top";
+  else if (monatsziel > 0 && uebrig >= monatsziel) status = "ziel";
+  else if (monatsziel > 0) status = "teil";
+  else status = "plus";
+
+  // Text auswählen (pro Monat immer derselbe, damit er nicht dauernd wechselt)
+  const varianten = (laufend ? TEXTE_LAUFEND : TEXTE_ABGESCHLOSSEN)[status];
+  const nr = Number(monat.replace("-", "")) % varianten.length;
+  abText.textContent = varianten[nr].replace("{x}", euro(Math.abs(uebrig)));
+
+  // Kennzahlen
+  if (ein > 0) {
+    abDetail("Sparquote", Math.round((uebrig / ein) * 100) + " % der Einnahmen");
+  }
+
+  const ausgaben = imMonat.filter(function (b) {
+    return b.typ === "ausgabe";
+  });
+  if (ausgaben.length > 0) {
+    let groesste = ausgaben[0];
+    const summen = {};
+    ausgaben.forEach(function (b) {
+      if (b.betrag > groesste.betrag) groesste = b;
+      const k = b.kategorie || "📦 Sonstiges";
+      summen[k] = (summen[k] || 0) + b.betrag;
+    });
+    const top = Object.entries(summen).sort(function (a, b) {
+      return b[1] - a[1];
+    })[0];
+    abDetail("Größte Ausgabe", groesste.beschreibung + " · " + euro(groesste.betrag));
+    abDetail("Meiste Ausgaben", top[0] + " · " + euro(top[1]));
+  }
+
+  // Vergleich mit dem Vormonat (nur bei abgeschlossenen Monaten)
+  if (!laufend) {
+    const vorKey = addMonate(monat + "-01", -1).slice(0, 7);
+    let vorAus = 0;
+    buchungen.forEach(function (b) {
+      if (b.typ === "ausgabe" && b.datum.startsWith(vorKey)) vorAus += b.betrag;
+    });
+    if (vorAus > 0) {
+      const diff = aus - vorAus;
+      abDetail(
+        "Ausgaben zum Vormonat",
+        (diff <= 0 ? "−" : "+") + euro(Math.abs(diff)),
+        diff <= 0 ? "einnahme" : "ausgabe"
+      );
+    }
+  }
+}
 // ---------- Alles neu zeichnen ----------
 function anzeigen() {
   let saldo = 0;
@@ -812,12 +970,14 @@ function anzeigen() {
   summeEin.textContent = euro(ein);
   summeAus.textContent = euro(aus);
 
+
   const ausgabenImMonat = imMonat.filter(function (b) {
     return b.typ === "ausgabe";
   });
   donutZeichnen(ausgabenImMonat);
   budgetsZeichnen(ausgabenImMonat);
   verlaufZeichnen();
+  abschlussZeichnen(imMonat, ein, aus);   // <-- NEU
   kategorienZeichnen();
   regelnZeichnen();
   sparzieleZeichnen();
@@ -985,6 +1145,7 @@ exportKnopf.addEventListener("click", function () {
     regeln: regeln,
     sparziele: sparziele,
     kategorien: KATEGORIEN,
+    monatsziel: monatsziel,
   };
   const blob = new Blob([JSON.stringify(daten, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
@@ -1019,6 +1180,7 @@ importDatei.addEventListener("change", function () {
       budgets = daten.budgets || {};
       regeln = Array.isArray(daten.regeln) ? daten.regeln : [];
       sparziele = Array.isArray(daten.sparziele) ? daten.sparziele : [];
+      monatsziel = Number(daten.monatsziel) || 0;
       KATEGORIEN =
         daten.kategorien && typeof daten.kategorien === "object"
           ? daten.kategorien
@@ -1060,6 +1222,7 @@ resetKnopf.addEventListener("click", function () {
   budgets = {};
   regeln = [];
   sparziele = [];
+  monatsziel = 0; 
   KATEGORIEN = kopie(STANDARD_KATEGORIEN);
   monat = heute().slice(0, 7);
 
@@ -1070,6 +1233,12 @@ resetKnopf.addEventListener("click", function () {
 });
 
 // ---------- Start ----------
+abZiel.addEventListener("change", function () {
+  const wert = parseFloat(abZiel.value);
+  monatsziel = isNaN(wert) || wert <= 0 ? 0 : wert;
+  speichern();
+  anzeigen();
+});
 datumFeld.value = heute();
 wStart.value = heute();
 vStart.value = heute();

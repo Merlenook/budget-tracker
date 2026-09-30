@@ -455,3 +455,30 @@ li {
 .tab {
   padding: 12px 14px;
 }
+/* ---------- Monatsabschluss ---------- */
+.abschluss-zahl {
+  font-size: 2rem;
+  margin: 0;
+}
+
+#abSpur {
+  margin: 12px 0 6px;
+}
+
+.abschluss-text {
+  margin: 14px 0;
+  padding: 14px 16px;
+  background: var(--hintergrund);
+  color: var(--text);
+  border-radius: 12px;
+  line-height: 1.5;
+}
+
+#abDetails {
+  margin: 8px 0 16px;
+}
+
+#abZiel {
+  width: 100%;
+  margin-top: 8px;
+}
