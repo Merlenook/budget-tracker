@@ -234,3 +234,67 @@ li:last-child {
   color: var(--text);
   border: 1px solid #2c3040;
 }
+/* ---------- Tablet-Feinschliff ---------- */
+
+/* Kontostand-Karte mit sanftem Farbverlauf */
+.saldo-karte {
+  background: linear-gradient(135deg, #2b3563 0%, #1c1f28 70%);
+  border: 1px solid #2c3040;
+}
+
+.saldo {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+
+/* Karten wirken etwas plastischer */
+.karte {
+  border: 1px solid #262a37;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Sanfte Reaktion beim Tippen */
+button {
+  transition: transform 0.1s ease, filter 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+/* Auf dem Handy: eine Spalte */
+.spalte {
+  display: block;
+}
+
+/* Ab Tablet-Breite: zwei Spalten */
+@media (min-width: 900px) {
+  main {
+    max-width: 1100px;
+    padding: 32px 24px;
+  }
+
+  h1 {
+    font-size: 2.2rem;
+  }
+
+  .spalten {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+}
+
+/* Größere Tipp-Flächen auf Touch-Geräten */
+@media (pointer: coarse) {
+  input,
+  select,
+  button {
+    min-height: 48px;
+  }
+}
