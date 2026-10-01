@@ -25,6 +25,16 @@ const INTERVALLE = {
   6: "halbjährlich",
   12: "jährlich",
 };
+const ZAHLUNGSARTEN = [
+  "💳 EC-Karte",
+  "💶 Bar",
+  "📲 PayPal",
+  "🏦 Online-Überweisung",
+  "🍎 Apple Pay",
+  "🧾 Lastschrift",
+  "Google Pay",
+  "Wero",
+];
 
 // ---------- Hilfsfunktionen ----------
 function heute() {
@@ -127,6 +137,7 @@ const kategorieFeld = document.getElementById("kategorie");
 const beschreibungFeld = document.getElementById("beschreibung");
 const betragFeld = document.getElementById("betrag");
 const datumFeld = document.getElementById("datum");
+const zahlungFeld = document.getElementById("zahlung");
 const knopf = document.getElementById("hinzufuegen");
 const monatName = document.getElementById("monatName");
 const summeEin = document.getElementById("summeEin");
@@ -134,6 +145,7 @@ const summeAus = document.getElementById("summeAus");
 const donut = document.getElementById("donut");
 const legende = document.getElementById("legende");
 const budgetListe = document.getElementById("budgetListe");
+const zahlungListe = document.getElementById("zahlungListe");
 const verlauf = document.getElementById("verlauf");
 const verlaufInfo = document.getElementById("verlaufInfo");
 
@@ -148,6 +160,7 @@ const wBeschreibung = document.getElementById("wBeschreibung");
 const wBetrag = document.getElementById("wBetrag");
 const wIntervall = document.getElementById("wIntervall");
 const wStart = document.getElementById("wStart");
+const wZahlung = document.getElementById("wZahlung");
 const wKnopf = document.getElementById("wKnopf");
 const wListe = document.getElementById("wListe");
 
@@ -156,6 +169,7 @@ const vBetrag = document.getElementById("vBetrag");
 const vIntervall = document.getElementById("vIntervall");
 const vStart = document.getElementById("vStart");
 const vKuendigung = document.getElementById("vKuendigung");
+const vZahlung = document.getElementById("vZahlung");
 const vKnopf = document.getElementById("vKnopf");
 const vListe = document.getElementById("vListe");
 const vSummeMonat = document.getElementById("vSummeMonat");
@@ -199,6 +213,7 @@ function kategorienLaden(typEl, katEl) {
 function kategorienAktualisieren() {
   kategorienLaden(typFeld, kategorieFeld);
   kategorienLaden(wTyp, wKategorie);
+  filterOptionenLaden();
 }
 
 typFeld.addEventListener("change", function () {
@@ -207,7 +222,18 @@ typFeld.addEventListener("change", function () {
 wTyp.addEventListener("change", function () {
   kategorienLaden(wTyp, wKategorie);
 });
-
+// ---------- Zahlungsarten in den Auswahlfeldern ----------
+function zahlungenLaden() {
+  [zahlungFeld, wZahlung, vZahlung].forEach(function (feld) {
+    feld.innerHTML = "";
+    ZAHLUNGSARTEN.forEach(function (art) {
+      const option = document.createElement("option");
+      option.value = art;
+      option.textContent = art;
+      feld.appendChild(option);
+    });
+  });
+}
 // ---------- Kategorien verwalten ----------
 function kategorienZeichnen() {
   katListe.innerHTML = "";
@@ -358,6 +384,7 @@ function regelnAnwenden() {
           kategorie: r.kategorie,
           beschreibung: r.beschreibung,
           betrag: r.betrag,
+          zahlung: r.zahlung,
           datum: datum,
         });
         r.erzeugt.push(datum);
@@ -429,7 +456,52 @@ function donutZeichnen(ausgaben) {
   svg += "</svg>";
   donut.innerHTML = svg;
 }
+// ---------- Ausgaben nach Zahlungsart ----------
+function zahlungenZeichnen(ausgaben) {
+  zahlungListe.innerHTML = "";
 
+  const summen = {};
+  let gesamt = 0;
+  ausgaben.forEach(function (b) {
+    const art = b.zahlung || "Ohne Angabe";
+    summen[art] = (summen[art] || 0) + b.betrag;
+    gesamt += b.betrag;
+  });
+
+  const eintraege = Object.entries(summen).sort(function (a, b) {
+    return b[1] - a[1];
+  });
+
+  if (eintraege.length === 0) {
+    zahlungListe.appendChild(leerZeile("Keine Ausgaben in diesem Monat."));
+    return;
+  }
+
+  eintraege.forEach(function (eintrag) {
+    const anteil = (eintrag[1] / gesamt) * 100;
+
+    const zeile = document.createElement("li");
+    zeile.className = "budget-zeile";
+
+    const kopf = document.createElement("div");
+    kopf.className = "budget-kopf";
+    const name = document.createElement("span");
+    name.textContent = eintrag[0];
+    const wert = document.createElement("span");
+    wert.textContent = euro(eintrag[1]) + " · " + Math.round(anteil) + " %";
+    kopf.append(name, wert);
+
+    const spur = document.createElement("div");
+    spur.className = "balken";
+    const fuellung = document.createElement("div");
+    fuellung.className = "fuellung akzent";
+    fuellung.style.width = anteil + "%";
+    spur.appendChild(fuellung);
+
+    zeile.append(kopf, spur);
+    zahlungListe.appendChild(zeile);
+  });
+}
 // ---------- Verlauf: Balkendiagramm der letzten 6 Monate ----------
 function verlaufZeichnen() {
   const teile = monat.split("-");
@@ -945,6 +1017,246 @@ function abschlussZeichnen(imMonat, ein, aus) {
     }
   }
 }
+// ---------- Buchungen: Suche, Filter und Bearbeiten ----------
+const suchFeld = document.getElementById("suche");
+const filterTyp = document.getElementById("filterTyp");
+const filterKategorie = document.getElementById("filterKategorie");
+const filterZahlung = document.getElementById("filterZahlung");
+const filterAlle = document.getElementById("filterAlle");
+const filterReset = document.getElementById("filterReset");
+const listeInfo = document.getElementById("listeInfo");
+
+const editDialog = document.getElementById("editDialog");
+const eTyp = document.getElementById("eTyp");
+const eKategorie = document.getElementById("eKategorie");
+const eZahlung = document.getElementById("eZahlung");
+const eBeschreibung = document.getElementById("eBeschreibung");
+const eBetrag = document.getElementById("eBetrag");
+const eDatum = document.getElementById("eDatum");
+const eSpeichern = document.getElementById("eSpeichern");
+const eAbbrechen = document.getElementById("eAbbrechen");
+
+let bearbeiteteBuchung = null;
+
+function optionHinzufuegen(feld, wert, text) {
+  const option = document.createElement("option");
+  option.value = wert;
+  option.textContent = text;
+  feld.appendChild(option);
+}
+
+// Auswahlfelder der Filter füllen (Auswahl bleibt erhalten, wenn möglich)
+function filterOptionenLaden() {
+  const altK = filterKategorie.value;
+  const altZ = filterZahlung.value;
+
+  filterKategorie.innerHTML = "";
+  optionHinzufuegen(filterKategorie, "", "Alle Kategorien");
+  const namen = [];
+  ["ausgabe", "einnahme"].forEach(function (typ) {
+    KATEGORIEN[typ].forEach(function (n) {
+      if (!namen.includes(n)) namen.push(n);
+    });
+  });
+  namen.forEach(function (n) {
+    optionHinzufuegen(filterKategorie, n, n);
+  });
+  filterKategorie.value = altK;
+  if (filterKategorie.selectedIndex === -1) filterKategorie.selectedIndex = 0;
+
+  filterZahlung.innerHTML = "";
+  optionHinzufuegen(filterZahlung, "", "Alle Zahlungsarten");
+  ZAHLUNGSARTEN.forEach(function (art) {
+    optionHinzufuegen(filterZahlung, art, art);
+  });
+  optionHinzufuegen(filterZahlung, "__ohne", "Ohne Angabe");
+  filterZahlung.value = altZ;
+  if (filterZahlung.selectedIndex === -1) filterZahlung.selectedIndex = 0;
+}
+
+function filterAktiv() {
+  return (
+    suchFeld.value.trim() !== "" ||
+    filterTyp.value !== "" ||
+    filterKategorie.value !== "" ||
+    filterZahlung.value !== "" ||
+    filterAlle.checked
+  );
+}
+
+// Welche Buchungen passen zu Suche und Filtern?
+function gefiltert(imMonat) {
+  const quelle = filterAlle.checked ? buchungen : imMonat;
+  const suche = suchFeld.value.trim().toLowerCase();
+
+  return quelle.filter(function (b) {
+    if (filterTyp.value && b.typ !== filterTyp.value) return false;
+    if (filterKategorie.value && (b.kategorie || "📦 Sonstiges") !== filterKategorie.value) {
+      return false;
+    }
+    if (filterZahlung.value === "__ohne") {
+      if (b.zahlung) return false;
+    } else if (filterZahlung.value && b.zahlung !== filterZahlung.value) {
+      return false;
+    }
+    if (suche) {
+      const text = (
+        b.beschreibung + " " +
+        (b.kategorie || "") + " " +
+        (b.zahlung || "") + " " +
+        String(b.betrag).replace(".", ",")
+      ).toLowerCase();
+      if (!text.includes(suche)) return false;
+    }
+    return true;
+  });
+}
+
+// Die Buchungsliste zeichnen
+function listeZeichnen() {
+  const imMonat = buchungen.filter(function (b) {
+    return b.datum.startsWith(monat);
+  });
+  const treffer = gefiltert(imMonat);
+  const aktiv = filterAktiv();
+
+  let sumE = 0;
+  let sumA = 0;
+  treffer.forEach(function (b) {
+    if (b.typ === "einnahme") sumE += b.betrag;
+    else sumA += b.betrag;
+  });
+
+  if (aktiv) {
+    listeInfo.textContent =
+      treffer.length + " Treffer · Einnahmen " + euro(sumE) + " · Ausgaben " + euro(sumA);
+  } else {
+    listeInfo.textContent =
+      treffer.length === 1 ? "1 Buchung in diesem Monat" : treffer.length + " Buchungen in diesem Monat";
+  }
+  filterReset.hidden = !aktiv;
+
+  liste.innerHTML = "";
+  if (treffer.length === 0) {
+    liste.appendChild(leerZeile(aktiv ? "Keine Treffer." : "Keine Buchungen in diesem Monat."));
+    return;
+  }
+
+  treffer.forEach(function (b) {
+    const eintrag = document.createElement("li");
+
+    const links = document.createElement("div");
+    const name = document.createElement("div");
+    name.textContent = b.beschreibung;
+    const kat = document.createElement("small");
+    kat.className = "kategorie-label";
+    const datumText = filterAlle.checked
+      ? datumDE(b.datum)
+      : b.datum.slice(8, 10) + "." + b.datum.slice(5, 7) + ".";
+    kat.textContent =
+      (b.kategorie || "📦 Sonstiges") + " · " + datumText + (b.zahlung ? " · " + b.zahlung : "");
+    links.append(name, kat);
+
+    const betrag = document.createElement("span");
+    betrag.textContent = (b.typ === "ausgabe" ? "−" : "+") + euro(b.betrag);
+    betrag.className = b.typ;
+
+    const bearbeitenKnopf = document.createElement("button");
+    bearbeitenKnopf.textContent = "✎";
+    bearbeitenKnopf.className = "loeschen";
+    bearbeitenKnopf.addEventListener("click", function () {
+      bearbeiten(b);
+    });
+
+    const loeschen = document.createElement("button");
+    loeschen.textContent = "✕";
+    loeschen.className = "loeschen";
+    loeschen.addEventListener("click", function () {
+      buchungen.splice(buchungen.indexOf(b), 1);
+      speichern();
+      anzeigen();
+    });
+
+    const rechts = document.createElement("span");
+    rechts.className = "rechts";
+    rechts.append(betrag, bearbeitenKnopf, loeschen);
+
+    eintrag.append(links, rechts);
+    liste.appendChild(eintrag);
+  });
+}
+
+// Filter bedienen
+suchFeld.addEventListener("input", listeZeichnen);
+[filterTyp, filterKategorie, filterZahlung, filterAlle].forEach(function (el) {
+  el.addEventListener("change", listeZeichnen);
+});
+
+filterReset.addEventListener("click", function () {
+  suchFeld.value = "";
+  filterTyp.selectedIndex = 0;
+  filterKategorie.selectedIndex = 0;
+  filterZahlung.selectedIndex = 0;
+  filterAlle.checked = false;
+  listeZeichnen();
+});
+
+// ----- Bearbeiten -----
+function bearbeiten(b) {
+  bearbeiteteBuchung = b;
+
+  eTyp.value = b.typ;
+  kategorienLaden(eTyp, eKategorie);
+  eKategorie.value = KATEGORIEN[b.typ].includes(b.kategorie) ? b.kategorie : "📦 Sonstiges";
+
+  eZahlung.innerHTML = "";
+  optionHinzufuegen(eZahlung, "", "Keine Angabe");
+  ZAHLUNGSARTEN.forEach(function (art) {
+    optionHinzufuegen(eZahlung, art, art);
+  });
+  if (b.zahlung && !ZAHLUNGSARTEN.includes(b.zahlung)) {
+    optionHinzufuegen(eZahlung, b.zahlung, b.zahlung);
+  }
+  eZahlung.value = b.zahlung || "";
+
+  eBeschreibung.value = b.beschreibung;
+  eBetrag.value = b.betrag;
+  eDatum.value = b.datum;
+  editDialog.showModal();
+}
+
+eTyp.addEventListener("change", function () {
+  kategorienLaden(eTyp, eKategorie);
+});
+
+eAbbrechen.addEventListener("click", function () {
+  editDialog.close();
+});
+
+eSpeichern.addEventListener("click", function () {
+  const beschreibung = eBeschreibung.value.trim();
+  const betrag = parseFloat(eBetrag.value);
+
+  if (beschreibung === "" || isNaN(betrag) || betrag <= 0 || !eDatum.value) {
+    alert("Bitte Beschreibung, Betrag und Datum ausfüllen.");
+    return;
+  }
+
+  const b = bearbeiteteBuchung;
+  b.typ = eTyp.value;
+  b.kategorie = eKategorie.value;
+  b.beschreibung = beschreibung;
+  b.betrag = betrag;
+  b.datum = eDatum.value;
+  if (eZahlung.value) b.zahlung = eZahlung.value;
+  else delete b.zahlung;
+
+  monat = b.datum.slice(0, 7); // zum Monat der geänderten Buchung springen
+  sortieren();
+  speichern();
+  editDialog.close();
+  anzeigen();
+});
 // ---------- Alles neu zeichnen ----------
 function anzeigen() {
   let saldo = 0;
@@ -975,51 +1287,17 @@ function anzeigen() {
     return b.typ === "ausgabe";
   });
   donutZeichnen(ausgabenImMonat);
+    zahlungenZeichnen(ausgabenImMonat);
   budgetsZeichnen(ausgabenImMonat);
   verlaufZeichnen();
   abschlussZeichnen(imMonat, ein, aus);   // <-- NEU
   kategorienZeichnen();
   regelnZeichnen();
   sparzieleZeichnen();
-
-  liste.innerHTML = "";
-  if (imMonat.length === 0) {
-    liste.appendChild(leerZeile("Keine Buchungen in diesem Monat."));
-  }
-
-  imMonat.forEach(function (b) {
-    const eintrag = document.createElement("li");
-
-    const links = document.createElement("div");
-    const name = document.createElement("div");
-    name.textContent = b.beschreibung;
-    const kat = document.createElement("small");
-    kat.className = "kategorie-label";
-    const tagMonat = b.datum.slice(8, 10) + "." + b.datum.slice(5, 7) + ".";
-    kat.textContent = (b.kategorie || "📦 Sonstiges") + " · " + tagMonat;
-    links.append(name, kat);
-
-    const betrag = document.createElement("span");
-    betrag.textContent = (b.typ === "ausgabe" ? "−" : "+") + euro(b.betrag);
-    betrag.className = b.typ;
-
-    const loeschen = document.createElement("button");
-    loeschen.textContent = "✕";
-    loeschen.className = "loeschen";
-    loeschen.addEventListener("click", function () {
-      buchungen.splice(buchungen.indexOf(b), 1);
-      speichern();
-      anzeigen();
-    });
-
-    const rechts = document.createElement("span");
-    rechts.className = "rechts";
-    rechts.append(betrag, loeschen);
-
-    eintrag.append(links, rechts);
-    liste.appendChild(eintrag);
-  });
+  backupZeichnen();
+  listeZeichnen();
 }
+ 
 
 // ---------- Neue Buchung ----------
 knopf.addEventListener("click", function () {
@@ -1037,6 +1315,7 @@ knopf.addEventListener("click", function () {
     beschreibung: beschreibung,
     betrag: betrag,
     datum: datum,
+    zahlung: zahlungFeld.value,
   });
   sortieren();
 
@@ -1064,6 +1343,7 @@ wKnopf.addEventListener("click", function () {
     betrag: betrag,
     monate: Number(wIntervall.value),
     start: wStart.value,
+    zahlung: wZahlung.value,
     erzeugt: [],
     versicherung: false,
     kuendigung: "",
@@ -1093,6 +1373,7 @@ vKnopf.addEventListener("click", function () {
     betrag: betrag,
     monate: Number(vIntervall.value),
     start: vStart.value,
+    zahlung: vZahlung.value,
     erzeugt: [],
     versicherung: true,
     kuendigung: vKuendigung.value || "",
@@ -1133,13 +1414,23 @@ zKnopf.addEventListener("click", function () {
 });
 
 // ---------- Backup ----------
+const BACKUP_ERINNERUNG_TAGE = 7; // nach so vielen Tagen erinnert die App
+const MAX_SNAPSHOTS = 10;
+
+const teilenKnopf = document.getElementById("teilenKnopf");
 const exportKnopf = document.getElementById("exportKnopf");
 const importKnopf = document.getElementById("importKnopf");
 const importDatei = document.getElementById("importDatei");
 const backupMeldung = document.getElementById("backupMeldung");
+const backupStatus = document.getElementById("backupStatus");
+const backupHinweis = document.getElementById("backupHinweis");
+const backupHinweisText = document.getElementById("backupHinweisText");
+const backupHinweisKnopf = document.getElementById("backupHinweisKnopf");
+const snapshotListe = document.getElementById("snapshotListe");
 
-exportKnopf.addEventListener("click", function () {
-  const daten = {
+// Alle Daten in einem Paket
+function datenPaket() {
+  return {
     buchungen: buchungen,
     budgets: budgets,
     regeln: regeln,
@@ -1147,15 +1438,82 @@ exportKnopf.addEventListener("click", function () {
     kategorien: KATEGORIEN,
     monatsziel: monatsziel,
   };
-  const blob = new Blob([JSON.stringify(daten, null, 2)], { type: "application/json" });
+}
+
+// Ein Datenpaket einspielen (für Import und Wiederherstellung)
+function datenAnwenden(daten) {
+  buchungen = Array.isArray(daten.buchungen) ? daten.buchungen : [];
+  budgets = daten.budgets || {};
+  regeln = Array.isArray(daten.regeln) ? daten.regeln : [];
+  sparziele = Array.isArray(daten.sparziele) ? daten.sparziele : [];
+  monatsziel = Number(daten.monatsziel) || 0;
+  KATEGORIEN =
+    daten.kategorien && typeof daten.kategorien === "object"
+      ? daten.kategorien
+      : kopie(STANDARD_KATEGORIEN);
+  kategorienPruefen();
+
+  buchungen.forEach(function (b) {
+    if (!b.datum) b.datum = heute();
+  });
+  regeln.forEach(function (r) {
+    if (!r.erzeugt) r.erzeugt = [];
+  });
+
+  speichern();
+  kategorienAktualisieren();
+  anzeigen();
+}
+
+// ----- Backup-Datei erzeugen, teilen, herunterladen -----
+function backupDatei() {
+  const text = JSON.stringify(datenPaket(), null, 2);
+  return new File([text], "budget-backup-" + heute() + ".json", { type: "application/json" });
+}
+
+function herunterladen(datei) {
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "budget-backup-" + heute() + ".json";
+  link.href = URL.createObjectURL(datei);
+  link.download = datei.name;
   link.click();
-  URL.revokeObjectURL(link.href);
+  setTimeout(function () {
+    URL.revokeObjectURL(link.href);
+  }, 1000);
+}
+
+function backupMerken() {
+  localStorage.setItem("letztesBackup", heute());
+  backupZeichnen();
+}
+
+teilenKnopf.addEventListener("click", async function () {
+  const datei = backupDatei();
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [datei] })) {
+      await navigator.share({ files: [datei], title: "Budget-Backup " + heute() });
+      backupMerken();
+      backupMeldung.textContent = "Backup geteilt.";
+      return;
+    }
+  } catch (fehler) {
+    if (fehler && fehler.name === "AbortError") return; // du hast abgebrochen
+  }
+  herunterladen(datei);
+  backupMerken();
+  backupMeldung.textContent = "Teilen wird hier nicht unterstützt, die Datei wurde heruntergeladen.";
+});
+
+exportKnopf.addEventListener("click", function () {
+  herunterladen(backupDatei());
+  backupMerken();
   backupMeldung.textContent = "Backup gespeichert (" + buchungen.length + " Buchungen).";
 });
 
+backupHinweisKnopf.addEventListener("click", function () {
+  teilenKnopf.click();
+});
+
+// ----- Import -----
 importKnopf.addEventListener("click", function () {
   importDatei.click();
 });
@@ -1176,27 +1534,8 @@ importDatei.addEventListener("change", function () {
       );
       if (!ok) return;
 
-      buchungen = daten.buchungen;
-      budgets = daten.budgets || {};
-      regeln = Array.isArray(daten.regeln) ? daten.regeln : [];
-      sparziele = Array.isArray(daten.sparziele) ? daten.sparziele : [];
-      monatsziel = Number(daten.monatsziel) || 0;
-      KATEGORIEN =
-        daten.kategorien && typeof daten.kategorien === "object"
-          ? daten.kategorien
-          : kopie(STANDARD_KATEGORIEN);
-      kategorienPruefen();
-
-      buchungen.forEach(function (b) {
-        if (!b.datum) b.datum = heute();
-      });
-      regeln.forEach(function (r) {
-        if (!r.erzeugt) r.erzeugt = [];
-      });
-
-      speichern();
-      kategorienAktualisieren();
-      anzeigen();
+      snapshotAnlegen("vor Import");
+      datenAnwenden(daten);
       backupMeldung.textContent = "Backup geladen (" + buchungen.length + " Buchungen).";
     } catch (fehler) {
       backupMeldung.textContent = "Diese Datei konnte nicht gelesen werden.";
@@ -1205,6 +1544,96 @@ importDatei.addEventListener("change", function () {
   };
   leser.readAsText(datei);
 });
+
+// ----- Automatische Sicherungen im Browser -----
+function snapshotsLaden() {
+  try {
+    return JSON.parse(localStorage.getItem("snapshots")) || [];
+  } catch (fehler) {
+    return [];
+  }
+}
+
+// Ohne Grund: höchstens einmal pro Tag. Mit Grund: immer (z. B. vor Import oder Neustart).
+function snapshotAnlegen(grund) {
+  const hatDaten = buchungen.length > 0 || regeln.length > 0 || sparziele.length > 0;
+  if (!hatDaten) return;
+
+  const liste = snapshotsLaden();
+  if (!grund && liste.length > 0 && liste[0].datum === heute() && !liste[0].grund) return;
+
+  liste.unshift({ datum: heute(), grund: grund || "", daten: datenPaket() });
+
+  try {
+    localStorage.setItem("snapshots", JSON.stringify(liste.slice(0, MAX_SNAPSHOTS)));
+  } catch (fehler) {
+    // Speicher voll: dann eben keine Sicherung
+  }
+}
+
+function snapshotsZeichnen() {
+  snapshotListe.innerHTML = "";
+  const liste = snapshotsLaden();
+
+  if (liste.length === 0) {
+    snapshotListe.appendChild(leerZeile("Noch keine automatischen Sicherungen."));
+    return;
+  }
+
+  liste.forEach(function (s) {
+    const zeile = document.createElement("li");
+
+    const links = document.createElement("div");
+    const name = document.createElement("div");
+    name.textContent = datumDE(s.datum) + (s.grund ? " · " + s.grund : "");
+    const info = document.createElement("small");
+    info.className = "kategorie-label";
+    info.textContent = s.daten.buchungen.length + " Buchungen";
+    links.append(name, info);
+
+    const knopfWieder = document.createElement("button");
+    knopfWieder.textContent = "Wiederherstellen";
+    knopfWieder.className = "zweit";
+    knopfWieder.addEventListener("click", function () {
+      const ok = confirm(
+        "Stand vom " + datumDE(s.datum) + " wiederherstellen? Die aktuellen Daten werden ersetzt."
+      );
+      if (!ok) return;
+      snapshotAnlegen("vor Wiederherstellung");
+      datenAnwenden(s.daten);
+      backupMeldung.textContent = "Sicherung vom " + datumDE(s.datum) + " wiederhergestellt.";
+    });
+
+    zeile.append(links, knopfWieder);
+    snapshotListe.appendChild(zeile);
+  });
+}
+
+// ----- Status und Erinnerung -----
+function backupZeichnen() {
+  const letztes = localStorage.getItem("letztesBackup");
+  const hatDaten = buchungen.length > 0 || regeln.length > 0 || sparziele.length > 0;
+  const alter = letztes ? -tageBis(letztes) : null;
+
+  if (!letztes) {
+    backupStatus.textContent = "Noch kein Backup erstellt.";
+  } else if (alter <= 0) {
+    backupStatus.textContent = "Letztes Backup: heute";
+  } else {
+    backupStatus.textContent =
+      "Letztes Backup: " + datumDE(letztes) + " (vor " + alter + (alter === 1 ? " Tag)" : " Tagen)");
+  }
+
+  const faellig = hatDaten && (!letztes || alter >= BACKUP_ERINNERUNG_TAGE);
+  backupHinweis.hidden = !faellig;
+  if (faellig) {
+    backupHinweisText.textContent = letztes
+      ? "Dein letztes Backup ist " + alter + " Tage alt."
+      : "Du hast noch kein Backup erstellt.";
+  }
+
+  snapshotsZeichnen();
+}
 
 // ---------- Neustart ----------
 const resetKnopf = document.getElementById("resetKnopf");
@@ -1217,6 +1646,7 @@ resetKnopf.addEventListener("click", function () {
 
   const ok2 = confirm("Letzte Nachfrage: Das kann nicht rückgängig gemacht werden. Fortfahren?");
   if (!ok2) return;
+    snapshotAnlegen("vor Neustart");
 
   buchungen = [];
   budgets = {};
@@ -1233,6 +1663,8 @@ resetKnopf.addEventListener("click", function () {
 });
 
 // ---------- Start ----------
+snapshotAnlegen();
+zahlungenLaden();
 abZiel.addEventListener("change", function () {
   const wert = parseFloat(abZiel.value);
   monatsziel = isNaN(wert) || wert <= 0 ? 0 : wert;

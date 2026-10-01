@@ -26,6 +26,10 @@
 
     <!-- ===== Reiter 1: Übersicht ===== -->
     <div id="tab-uebersicht" class="tab-inhalt">
+            <div id="backupHinweis" class="hinweis" hidden>
+        <span id="backupHinweisText"></span>
+        <button id="backupHinweisKnopf">Jetzt sichern</button>
+      </div>
       <div class="spalten">
         <div class="spalte">
           <section class="karte saldo-karte">
@@ -41,6 +45,7 @@
                 <option value="einnahme">Einnahme</option>
               </select>
               <select id="kategorie"></select>
+              <select id="zahlung"></select>
               <input id="beschreibung" type="text" placeholder="Wofür?">
               <input id="betrag" type="number" step="0.01" placeholder="Betrag in €">
               <input id="datum" type="date">
@@ -116,19 +121,47 @@
           </section>
 
           <section class="karte">
+            <h2>Ausgaben nach Zahlungsart</h2>
+            <ul id="zahlungListe"></ul>
+          </section>
+
+          <section class="karte">
             <h2>Buchungen</h2>
+            <input id="suche" type="search" placeholder="🔍 Suchen (Name, Kategorie, Betrag ...)">
+            <div class="filter-reihe">
+              <select id="filterTyp">
+                <option value="">Alle Arten</option>
+                <option value="ausgabe">Ausgaben</option>
+                <option value="einnahme">Einnahmen</option>
+              </select>
+              <select id="filterKategorie"></select>
+              <select id="filterZahlung"></select>
+            </div>
+            <label class="haken">
+              <input id="filterAlle" type="checkbox"> In allen Monaten suchen
+            </label>
+            <div class="filter-info">
+              <span id="listeInfo" class="label"></span>
+              <button id="filterReset" class="zweit" hidden>Filter zurücksetzen</button>
+            </div>
             <ul id="liste"></ul>
           </section>
 
           <section class="karte">
             <h2>Backup</h2>
-            <p class="label">Sichere deine Daten regelmäßig als Datei.</p>
+            <p id="backupStatus" class="label"></p>
             <div class="backup-knoepfe">
-              <button id="exportKnopf">Exportieren</button>
-              <button id="importKnopf" class="zweit">Importieren</button>
+              <button id="teilenKnopf">Sichern &amp; teilen</button>
+              <button id="exportKnopf" class="zweit">Als Datei laden</button>
             </div>
+            <button id="importKnopf" class="zweit voll">Backup importieren</button>
             <input id="importDatei" type="file" accept="application/json,.json" hidden>
             <p id="backupMeldung" class="label"></p>
+
+            <h3>Automatische Sicherungen</h3>
+            <p class="label">Einmal täglich legt die App beim Öffnen eine Kopie an (die letzten 10). Sie liegen im Browser, schützen also vor Fehlern, aber nicht vor gelöschten Browserdaten.</p>
+            <ul id="snapshotListe"></ul>
+          
           </section>
 
           <section class="karte">
@@ -161,6 +194,7 @@
                 <option value="6">halbjährlich</option>
                 <option value="12">jährlich</option>
               </select>
+              <select id="wZahlung"></select>
               <label class="feld-label" for="wStart">Erste Buchung am</label>
               <input id="wStart" type="date">
               <button id="wKnopf">Regel anlegen</button>
@@ -191,6 +225,7 @@
                 <option value="6">halbjährlich</option>
                 <option value="12" selected>jährlich</option>
               </select>
+              <select id="vZahlung"></select>
               <label class="feld-label" for="vStart">Nächste Fälligkeit</label>
               <input id="vStart" type="date">
               <label class="feld-label" for="vKuendigung">Kündigen bis (optional)</label>
@@ -259,7 +294,24 @@
       </div>
     </div>
   </main>
-
+  <dialog id="editDialog" class="dialog">
+    <h2>Buchung bearbeiten</h2>
+    <div class="formular">
+      <select id="eTyp">
+        <option value="ausgabe">Ausgabe</option>
+        <option value="einnahme">Einnahme</option>
+      </select>
+      <select id="eKategorie"></select>
+      <select id="eZahlung"></select>
+      <input id="eBeschreibung" type="text" placeholder="Wofür?">
+      <input id="eBetrag" type="number" step="0.01" placeholder="Betrag in €">
+      <input id="eDatum" type="date">
+    </div>
+    <div class="backup-knoepfe">
+      <button id="eSpeichern">Speichern</button>
+      <button id="eAbbrechen" class="zweit">Abbrechen</button>
+    </div>
+  </dialog>
   <script src="app.js"></script>
 </body>
 </html>
